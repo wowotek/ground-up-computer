@@ -1,4 +1,4 @@
-from binary import Binary, list_to_decimal, MAX_VALUE
+from binary import Binary, list_to_decimal, interpret_list_with_negative, MAX_VALUE
 
 
 class ALU:
@@ -15,6 +15,7 @@ class ALU:
             8: self._OP_NOT,
             9: self._OP_SHIFT_LEFT,
             10: self._OP_SHIFT_RIGHT,
+            11: self._OP_COMPARE,
         }
 
         self.input_a = Binary(0)
@@ -224,17 +225,31 @@ class ALU:
         self.flag_carry = False
         self.flag_negative = self.result.get_at(0)
     
+    def _OP_COMPARE(self):
+        val = 0 
+        if self.input_a < self.input_b:
+            val = 1
+        elif self.input_a > self.input_b:
+            val = 2
+
+        self.result = Binary(val)
+
+        self.flag_zero = self._detect_zero()
+        self.flag_overflow = False
+        self.flag_carry = False
+        self.flag_negative = self.result.get_at(0)
+    
     def __str__(self):
         _op = ''.join(["1" if self.input_op.get_at(i) else "0" for i in range(self.input_op.size())])
-        input_op =     f"I_OP       = {_op}  |  {self.input_op.copy().decimal()}"
+        input_op =     f"I_OP       = {_op}  |  {interpret_list_with_negative(self.input_op.boolean_list())}"
 
         _a = ''.join(["1" if self.input_a.get_at(i) else "0" for i in range(self.input_a.size())])
-        input_a =      f"I_A        = {_a}  |  {self.input_a.copy().decimal()}"
+        input_a =      f"I_A        = {_a}  |  {interpret_list_with_negative(self.input_a.boolean_list())}"
         _b = ''.join(["1" if self.input_b.get_at(i) else "0" for i in range(self.input_b.size())])
-        input_b =      f"I_B        = {_b}  |  {self.input_b.copy().decimal()}"
+        input_b =      f"I_B        = {_b}  |  {interpret_list_with_negative(self.input_b.boolean_list())}"
 
         _r = ''.join(["1" if self.result.get_at(i) else "0" for i in range(self.result.size())])
-        result =       f"Y_Result   = {_r}  |  {self.result.copy().decimal()}"
+        result =       f"Y_Result   = {_r}  |  {interpret_list_with_negative(self.result.boolean_list())}"
 
         flagzero =     f"F_Zero     = {1 if self.flag_zero else 0}"
         flagoverflow = f"F_Overflow = {1 if self.flag_overflow else 0}"

@@ -28,10 +28,10 @@ class RAM:
     
     def tick(self):
         if self.read_enable:
-            self.data_io = self.get_from_ram(self.input_address)
+            self.data_io = self._get_from_ram(self.input_address)
 
         if self.write_enable:
-            self.set_to_ram(self.input_address, self.data_io)
+            self._set_to_ram(self.input_address, self.data_io)
         
         self.input_address = Binary(0)
         self.read_enable = False

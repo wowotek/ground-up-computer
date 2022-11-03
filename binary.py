@@ -15,6 +15,13 @@ def decimal_to_list(decimal: int) -> list[bool]:
     _b = format(decimal, f"0{BIT_LENGTH}b")
     return [True if i == "1" else False for i in _b]
 
+def interpret_list_with_negative(l: list[bool]) -> int:
+    is_negative = l[0]
+
+    normal = list_to_decimal(l)
+    negated = -list_to_decimal(l[:len(l)-1:])
+
+    return normal, negated
 
 
 BIT_LENGTH = 8
@@ -51,6 +58,9 @@ class Binary:
         
         return int("".join(s), 2)
 
+    def boolean_list(self):
+        return self.copy()._binary
+        
     def size(self):
         return len(self._binary)
     
@@ -110,7 +120,7 @@ class Binary:
         for i in range(self.size()):
             a.append("1" if self.get_at(i) else "0")
         
-        return "".join(a) + f" | {list_to_decimal(a)}"
+        return "".join(a) + f" | {interpret_list_with_negative(a)}"
     
     def __repr__(self) -> str:
         return self.__str__()
