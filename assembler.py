@@ -103,19 +103,26 @@ for i in contents:
     else:
         JMP_ADDRESES[i.replace(":", "")] = count
 
+####################################################################################
+####################################################################################
+
+# Check if Any Written Operand is not defined
+for i in PROGRAM:
+    if PROGRAM[i][0] not in [i for i in OPERATION_VALUES]: raise Exception(f"Operator of {PROGRAM[i][0]} Does Not Exist")
+
+
 # Parse Jumps and/or Branches Control
 for i in PROGRAM:
     if PROGRAM[i][0] in ["JMP", "JEZ", "JGZ", "JLZ", "JMN", "JEQ", "JNE", "JMG", "JML"]:
-        if PROGRAM[i][1] not in JMP_ADDRESES:
-            raise Exception(f"SUBSECTION {PROGRAM[i][1]} does not exist")
-        
+        if PROGRAM[i][1] not in JMP_ADDRESES: raise Exception(f"SUBSECTION {PROGRAM[i][1]} does not exist")
+    
         PROGRAM[i][1] = JMP_ADDRESES[PROGRAM[i][1]]
 
-# for i in PROGRAM:
-#     ops = PROGRAM[i][0]
-#     if ops not in [i for i in OPERATION_VALUES]: raise Exception(f"OPERATOR {i} not Found")
+for i in PROGRAM:
+    ops = PROGRAM[i][0]
+    if ops not in [i for i in OPERATION_VALUES]: raise Exception(f"OPERATOR {i} not Found")
 
-#     PROGRAM[i][0] = OPERATION_VALUES[ops]
+    PROGRAM[i][0] = OPERATION_VALUES[ops]
 
 print(PROGRAM)
 print(JMP_ADDRESES)

@@ -12,4 +12,5 @@
     cmp rgc rgb
     jez SECTION_TWO
     jmp SECTION_ONE
+    jgg SECTION_ONE
 
