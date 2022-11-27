@@ -180,14 +180,64 @@ def initialize_ram(data: list[Binary]):
         RAM[i] = data[i]
 
 REGISTRY = {
-    0: Binary(),   # Instruction Pointer - Program Counter
-    1: Binary(),   # Instruction
-    2: Binary(),   # ALU Return
-    3: Binary(),   # Flags Register
-    4: Binary(),   # General Purpose Register A
-    5: Binary(),   # General Purpose Register B
-    6: Binary(),   # General Purpose Register C
-    7: Binary(),   # General Purpose Register D
+    0   : Binary(),   # Instruction Pointer - Program Counter
+    1   : Binary(),   # Instruction
+    2   : Binary(),   # ALU Return
+    # ALUs
+    # 0 Overflow
+    # 1 Zero
+    # 2 Negative
+    # 3 Carry
+
+    3   : Binary(),   # Flags Register
+
+    4   : Binary(),   # General Purpose Register A
+    5   : Binary(),   # General Purpose Register B
+    6   : Binary(),   # General Purpose Register C
+    7   : Binary(),   # General Purpose Register D
+    8   : Binary(),   # General Purpose Register E
+    9   : Binary(),   # General Purpose Register F
+    10  : Binary(),   # General Purpose Register G
+    11  : Binary(),   # General Purpose Register H
+
+    12  : Binary(),   # General Purpose Unsigned Integer Register A
+    13  : Binary(),   # General Purpose Unsigned Integer Register B
+
+    14  : Binary(),   # General Purpose Signed Integer Register A
+    15  : Binary(),   # General Purpose Signed Integer Register B
+
+    16  : Binary(),   # General Purpose Unsigned Float Register A
+    17  : Binary(),   # General Purpose Unsigned Float Register B
+
+    18  : Binary(),   # General Purpose Signed Float Register A
+    19  : Binary(),   # General Purpose Signed Float Register B
+}
+
+REGISTRY_NAMES = {
+    "RFP": 0,
+    "RFI": 1,
+    "RFR": 2,
+
+    "RFF": 3,
+
+    "RGA": 4,
+    "RGB": 5,
+    "RGC": 6,
+    "RGD": 7,
+    "RGE": 8,
+    "RGF": 9,
+    "RGG": 10,
+    "RGH": 11,
+
+    "RIA": 12,
+    "RIB": 13,
+    "RIC": 14,
+    "RID": 15,
+
+    "RFA": 16,
+    "RFB": 17,
+    "RFC": 18,
+    "RFD": 19
 }
 
 def _OP_NOP():
@@ -227,15 +277,15 @@ def _OP_ADD():
     result = __PROC_CURRENT_VALUE_A.ADD(__PROC_CURRENT_VALUE_B)
     REGISTRY[2] = result[0]
 
-def _OP_SUBTRACT():
+def _OP_SUB():
     result = __PROC_CURRENT_VALUE_A.SUBTRACT(__PROC_CURRENT_VALUE_B)
     REGISTRY[2] = result[0]
 
-def _OP_MULTIPLY():
+def _OP_MUL():
     result = __PROC_CURRENT_VALUE_A.MULTIPLY(__PROC_CURRENT_VALUE_B)
     REGISTRY[2] = result[0]
 
-def _OP_DIVIDE():
+def _OP_DIV():
     result = __PROC_CURRENT_VALUE_A.DIVIDE(__PROC_CURRENT_VALUE_B)
     REGISTRY[2] = result[0]
 
@@ -309,9 +359,9 @@ OPERATIONS = {
     205: _OP_XNOR,
 
     301: _OP_ADD,
-    302: _OP_SUBTRACT,
-    303: _OP_MULTIPLY,
-    304: _OP_DIVIDE,
+    302: _OP_SUB,
+    303: _OP_MUL,
+    304: _OP_DIV,
     305: _OP_CMP,
 }
 
