@@ -7,5 +7,9 @@
 
 :SECTION_TWO
 ; comments firstline
-    add rga rgb ;some other comments 1 +  2
-    mov rgb rga     ; another
+    add rga rgb     ;some other comments 1 +  2
+    mov rgb rgc     ; another
+    cmp rgc rgb
+    jez SECTION_TWO
+    jmp SECTION_ONE
+

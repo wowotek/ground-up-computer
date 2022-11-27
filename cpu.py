@@ -173,6 +173,8 @@ __INSTRUCTION_BANDWITH = 10
 __PROC_CURRENT_INSTRUCTION = Binary(0)
 __PROC_CURRENT_VALUE_A = Binary(0)
 __PROC_CURRENT_VALUE_B = Binary(0)
+__IS_HALTING = False
+
 
 RAM: dict[int, Binary] = {}
 def initialize_ram(data: list[Binary]):
@@ -310,10 +312,10 @@ def _OP_STORE():
 def _OP_LEA():
     pass
 
-def _OP_JUMP():
+def _OP_JMP():
     pass
 
-def _OP_JMZ():
+def _OP_JEZ():
     pass
 
 def _OP_JMN():
@@ -343,13 +345,15 @@ OPERATIONS = {
     7: _OP_LEA,      # Load Effective Address (load the address instead of value)
 
     # Conditional Jumps
-    100: _OP_JUMP,     # do Unconditional Jump
-    101: _OP_JMZ,      # Read From Flags and do Jump if flag is Zero
-    102: _OP_JMN,      # Read From Flags and do Jump if flag is Negative
-    103: _OP_JEQ,      # Read From Flags and do Jump if flag is Equal
-    104: _OP_JNE,      # Read From Flags and do Jump if flag is Not Equal
-    105: _OP_JMG,      # Read From Flags and do Jump if flag is Greater Than
-    106: _OP_JML,      # Read From Flags and do Jump if flag is Less Than,
+    100: _OP_JMP,     # do Unconditional Jump
+    101: _OP_JEZ,      # Read From Flags and do Jump if flag is Zero
+    102: _OP_JGZ,      # Read From Flags and do Jump if flag is Greater tHan Zero
+    103: _OP_JLZ,      # Read From Flags and do Jump if flag is Less Than Zero
+    104: _OP_JMN,      # Read From Flags and do Jump if flag is Negative
+    105: _OP_JEQ,      # Read From Flags and do Jump if flag is Equal
+    106: _OP_JNE,      # Read From Flags and do Jump if flag is Not Equal
+    107: _OP_JMG,      # Read From Flags and do Jump if flag is Greater Than
+    108: _OP_JML,      # Read From Flags and do Jump if flag is Less Than,
 
     200: _OP_OR,
     201: _OP_NOR,
@@ -377,7 +381,9 @@ OPERATIONS = {
 from random import randint
 
 def tick():
-    if IS_HALTING: return
+    global __IS_HALTING
+
+    if __IS_HALTING: return
     global __PROC_CURRENT_INSTRUCTION
     global __PROC_CURRENT_VALUE_A
     global __PROC_CURRENT_VALUE_B
@@ -393,20 +399,22 @@ def tick():
     __PROC_CURRENT_INSTRUCTION = Binary.from_binary(__instruction)
     __PROC_CURRENT_VALUE_A = Binary.from_binary(__value_a)
     __PROC_CURRENT_VALUE_B = Binary.from_binary(__value_b)
+
+    print(__instruction, __value_a, __value_b)
     
     try:
         operation = OPERATIONS[__PROC_CURRENT_INSTRUCTION]
     except:
         print("Operation Not Found!")
-        global IS_HALTING
         IS_HALTING = True
     
-    operation()
+    # operation()
     REGISTRY[0] = REGISTRY[0].set_unsigned_decimal(REGISTRY[0].unsigned_decimal + 1)
 
 
 initialize_ram([
     Binary.from_decimal(randint(0, BANDWITH_MAX_NUMBER))
 ])
+
 
 tick()

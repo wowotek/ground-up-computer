@@ -7,13 +7,15 @@ OPERATION_VALUES = {
     "LOAD"  : 5,
     "STORE" : 6,
     "LEA"   : 7,
-    "JUMP"  : 100,
-    "JMZ"   : 101,
-    "JMN"   : 102,
-    "JEQ"   : 103,
-    "JNE"   : 104,
-    "JMG"   : 105,
-    "JML"   : 106,
+    "JMP"   : 100,
+    "JEZ"   : 101,
+    "JGZ"   : 102,
+    "JLZ"   : 103,
+    "JMN"   : 104,
+    "JEQ"   : 105,
+    "JNE"   : 106,
+    "JMG"   : 107,
+    "JML"   : 108,
     "OR"    : 200,
     "NOR"   : 201,
     "AND"   : 202,
@@ -36,8 +38,10 @@ OPERATION_OPERANDS = {
     "LOAD"  : ["RAM", "REG"],
     "STORE" : ["REG", "RAM"],
     "LEA"   : ["RAM", "REG"],
-    "JUMP"  : ["RAM"],
-    "JMZ"   : ["RAM"],
+    "JMP"   : ["RAM"],
+    "JEZ"   : ["RAM"],
+    "JGZ"   : ["RAM"],
+    "JLZ"   : ["RAM"],
     "JMN"   : ["RAM"],
     "JEQ"   : ["RAM"],
     "JNE"   : ["RAM"],
@@ -56,8 +60,35 @@ OPERATION_OPERANDS = {
     "CMP"   : ["REG", "REG"],
 }
 
+REGISTRY_NAMES = {
+    "RFP": 0,
+    "RFI": 1,
+    "RFR": 2,
+
+    "RFF": 3,
+
+    "RGA": 4,
+    "RGB": 5,
+    "RGC": 6,
+    "RGD": 7,
+    "RGE": 8,
+    "RGF": 9,
+    "RGG": 10,
+    "RGH": 11,
+
+    "RIA": 12,
+    "RIB": 13,
+    "RIC": 14,
+    "RID": 15,
+
+    "RFA": 16,
+    "RFB": 17,
+    "RFC": 18,
+    "RFD": 19
+}
+
 PROGRAM = {}
-JUMP_ADDRESES = {}
+JMP_ADDRESES = {}
 with open("contoh_program.asm", "r") as f:
     contents = f.readlines()
     contents = [" ".join([k for k in j.split(" ") if k != ""]) for j in [i.replace("\n", "") for i in contents if i[0] != ";"] if j != ""]
@@ -70,12 +101,21 @@ for i in contents:
         PROGRAM[count] = [i.upper() for i in i.split(" ")]
         count += 1
     else:
-        JUMP_ADDRESES[i.replace(":", "")] = count
+        JMP_ADDRESES[i.replace(":", "")] = count
 
+# Parse Jumps and/or Branches Control
 for i in PROGRAM:
-    ops = PROGRAM[i][0]
-    if ops not in [i for i in OPERATION_VALUES]: raise Exception(f"OPERATOR {i} not Found")
+    if PROGRAM[i][0] in ["JMP", "JEZ", "JGZ", "JLZ", "JMN", "JEQ", "JNE", "JMG", "JML"]:
+        if PROGRAM[i][1] not in JMP_ADDRESES:
+            raise Exception(f"SUBSECTION {PROGRAM[i][1]} does not exist")
+        
+        PROGRAM[i][1] = JMP_ADDRESES[PROGRAM[i][1]]
 
-    PROGRAM[i][0] = OPERATION_VALUES[ops]
+# for i in PROGRAM:
+#     ops = PROGRAM[i][0]
+#     if ops not in [i for i in OPERATION_VALUES]: raise Exception(f"OPERATOR {i} not Found")
+
+#     PROGRAM[i][0] = OPERATION_VALUES[ops]
+
 print(PROGRAM)
-print(JUMP_ADDRESES)
+print(JMP_ADDRESES)
