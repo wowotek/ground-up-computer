@@ -156,6 +156,15 @@ class Binary:
                     
         return Binary.from_binary(result)
 
+    def SHIFT_LEFT(self):
+        binary = [i for i in self.binary]
+        binary.append(binary.pop(0))
+        return Binary.from_binary(binary)
+    
+    def SHIFT_RIGHT(self):
+        binary = [i for i in self.binary]
+        binary.insert(0, binary.pop())
+        return Binary.from_binary(binary)
 
     def __str__(self):
         binaries = UTILS.split_every_nth(self.binary, 8)
@@ -201,18 +210,6 @@ REGISTRY = {
     9   : Binary(),   # General Purpose Register F
     10  : Binary(),   # General Purpose Register G
     11  : Binary(),   # General Purpose Register H
-
-    12  : Binary(),   # General Purpose Unsigned Integer Register A
-    13  : Binary(),   # General Purpose Unsigned Integer Register B
-
-    14  : Binary(),   # General Purpose Signed Integer Register A
-    15  : Binary(),   # General Purpose Signed Integer Register B
-
-    16  : Binary(),   # General Purpose Unsigned Float Register A
-    17  : Binary(),   # General Purpose Unsigned Float Register B
-
-    18  : Binary(),   # General Purpose Signed Float Register A
-    19  : Binary(),   # General Purpose Signed Float Register B
 }
 
 REGISTRY_NAMES = {
@@ -230,16 +227,6 @@ REGISTRY_NAMES = {
     "RGF": 9,
     "RGG": 10,
     "RGH": 11,
-
-    "RIA": 12,
-    "RIB": 13,
-    "RIC": 14,
-    "RID": 15,
-
-    "RFA": 16,
-    "RFB": 17,
-    "RFC": 18,
-    "RFD": 19
 }
 
 def _OP_NOP():
@@ -247,9 +234,54 @@ def _OP_NOP():
         pass
 
 def _OP_HALT():
-    global IS_HALTING
+    global __IS_HALTING
 
-    IS_HALTING = True
+    __IS_HALTING = True
+
+def _OP_MOV():
+    pass
+
+def _OP_MEMSET():
+    pass
+
+def _OP_SET():
+    pass
+
+def _OP_LOAD():
+    pass
+
+def _OP_STORE():
+    pass
+
+def _OP_LEA():
+    pass
+
+def _OP_JMP():
+    pass
+
+def _OP_JEZ():
+    pass
+
+def _OP_JGZ():
+    pass
+
+def _OP_JLZ():
+    pass
+
+def _OP_JMN():
+    pass
+
+def _OP_JEQ():
+    pass
+
+def _OP_JNE():
+    pass
+
+def _OP_JMG():
+    pass
+
+def _OP_JML():
+    pass
 
 def _OP_OR():
     result = __PROC_CURRENT_VALUE_A.OR(__PROC_CURRENT_VALUE_B)
@@ -294,45 +326,6 @@ def _OP_DIV():
 def _OP_CMP():
     pass
 
-def _OP_MOV():
-    pass
-
-def _OP_MEMSET():
-    pass
-
-def _OP_SET():
-    pass
-
-def _OP_LOAD():
-    pass
-
-def _OP_STORE():
-    pass
-
-def _OP_LEA():
-    pass
-
-def _OP_JMP():
-    pass
-
-def _OP_JEZ():
-    pass
-
-def _OP_JMN():
-    pass
-
-def _OP_JEQ():
-    pass
-
-def _OP_JNE():
-    pass
-
-def _OP_JMG():
-    pass
-
-def _OP_JML():
-    pass
-
 OPERATIONS = {
     0: _OP_NOP,
     1: _OP_HALT,
@@ -375,10 +368,6 @@ OPERATIONS = {
 # 1 = Zero
 # 2 = Negative
 # 3 = Overflow
-#
-#
-#
-from random import randint
 
 def tick():
     global __IS_HALTING
@@ -401,20 +390,13 @@ def tick():
     __PROC_CURRENT_VALUE_B = Binary.from_binary(__value_b)
 
     print(__instruction, __value_a, __value_b)
+    print(len(__instruction), len(__value_a), len(__value_b))
     
     try:
         operation = OPERATIONS[__PROC_CURRENT_INSTRUCTION]
     except:
         print("Operation Not Found!")
-        IS_HALTING = True
+        __IS_HALTING = True
     
     # operation()
     REGISTRY[0] = REGISTRY[0].set_unsigned_decimal(REGISTRY[0].unsigned_decimal + 1)
-
-
-initialize_ram([
-    Binary.from_decimal(randint(0, BANDWITH_MAX_NUMBER))
-])
-
-
-tick()
