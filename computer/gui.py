@@ -17,6 +17,7 @@ OPERATION_OPERANDS: dict[str, list[str]] = {
     "RND"   : ["REG"],
     "RNDC"  : ["REG"],
     "RNDS"  : ["REG", "CONST"],
+    "STORER": ["REG", "REG"],
     "JMP"   : ["RAM"],
     "JEZ"   : ["RAM"],
     "JGZ"   : ["RAM"],
@@ -56,10 +57,6 @@ register_names = [cpu.REGISTRY_NAMES[i] for i in cpu.REGISTRY_NAMES]
 register_labels = [ label_font.render(i + ":", False, (200, 200, 200))
     for i in register_names
 ]
-last_added_pixels = []
-
-def draw_pixel(color: tuple[int, int, int] | tuple[int, int, int, int], coordinate: tuple[float, float]):
-    last_added_pixels.append((color, coordinate))
 
 def draw_to_screen(color: tuple[int, int, int] | tuple[int, int, int, int], coordinate: tuple[float, float]):
     newx = int(utils.map_value(0, vwidth, 517, cwidth + 514, coordinate[0]))
@@ -140,34 +137,41 @@ while True:
         else:
             screen.blit(
                 value_font.render(
-                    str(cpu.REGISTRY[i].unsigned_decimal),
+                    "".join(utils.split_every_nth(hex(cpu.REGISTRY[i].unsigned_decimal).replace("0x", ""), 2)),
                     False,
                     (255, 255, 255)
                 ),
                 (42, (i * 15) + 2)
             )
 
-    for i in range(vwidth * vheight):
-        decimal = cpu.RAM[cpu.PROGRAM_LENGTH + i].unsigned_decimal
-        if decimal == 0: continue
+    if len(cpu.RAM) - cpu.PROGRAM_LENGTH >= (vwidth * vheight):
+        for i in range(vwidth * vheight):
+            decimal = cpu.RAM[cpu.PROGRAM_LENGTH + i].unsigned_decimal
+            if decimal == 0: continue
 
-        binary = cpu.RAM[cpu.PROGRAM_LENGTH + i].binary
-        r = utils.map_value(0, (2 ** 64)-1, 0, 255, int(binary[0:64], 2)) 
-        g = utils.map_value(0, (2 ** 64)-1, 0, 255, int(binary[64:128], 2))
-        b = utils.map_value(0, (2 ** 64)-1, 0, 255, int(binary[128:192], 2))
-        a = utils.map_value(0, (2 ** 64)-1, 0, 255, int(binary[192:256], 2))
+            binary = cpu.RAM[cpu.PROGRAM_LENGTH + i].binary
+            r = utils.map_value(0, (2 ** 10)-1, 0, 255, int(binary[0:10], 2)) 
+            g = utils.map_value(0, (2 ** 10)-1, 0, 255, int(binary[10:20], 2))
+            b = utils.map_value(0, (2 ** 10)-1, 0, 255, int(binary[20:30], 2))
+            a = utils.map_value(0, (2 ** 10)-1, 0, 255, int(binary[30:40], 2))
 
-        draw_to_screen((r, g, b), (int(i / vheight), int(i % vheight)))
+            draw_to_screen((r, g, b), (int(i / vheight), int(i % vheight)))
 
 
     pygame.display.flip()
+
     # add instruction to textbox
-    instruction = cpu.OPERATION_NAMES[cpu.__PROC_CURRENT_INSTRUCTION.unsigned_decimal]
-    instruction_operand_type = OPERATION_OPERANDS[instruction]
-    operand = [cpu.__PROC_CURRENT_VALUE_A.unsigned_decimal, cpu.__PROC_CURRENT_VALUE_B.unsigned_decimal]
-    for i in range(len(instruction_operand_type)):
-        if instruction_operand_type[i] == "REG":
-            operand[i] = cpu.REGISTRY_NAMES[operand[i]]
-        
-    add_to_text_box("   ".join([instruction] + [str(i).rjust(3, " ") for i in operand]))
-    cpu.tick()      
+    now = time.time()
+    if now - lt > 0:
+        try:
+            instruction = cpu.OPERATION_NAMES[cpu.__PROC_CURRENT_INSTRUCTION.unsigned_decimal]
+            instruction_operand_type = OPERATION_OPERANDS[instruction]
+            operand = [cpu.__PROC_CURRENT_VALUE_A.unsigned_decimal, cpu.__PROC_CURRENT_VALUE_B.unsigned_decimal]
+            for i in range(len(instruction_operand_type)):
+                if instruction_operand_type[i] == "REG":
+                    operand[i] = cpu.REGISTRY_NAMES[operand[i]]
+                
+            add_to_text_box(" ".join([instruction.ljust(6, " ")] + [str(i).rjust(3, " ").ljust(6, " ") for i in operand]))
+        except: pass
+        cpu.tick()
+        lt = now

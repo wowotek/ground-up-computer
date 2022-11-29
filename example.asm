@@ -18,16 +18,15 @@
 
 ; :SECTION_THREE
 ;     load 123123 rga
+.OVERRUN 320 * 320
 
-NAME = 1000
-
-:start
-    set rga 5
-    set rgb 7
-    add rga rgb
-    mov rfr rgb
+PROGRAM_OFFSET = 15
 
 :loop
-    inc rga
-    rndc rgc 100
+    rnd rgb             ; color
+    rndc rgc 320*320    ; coordinate
+    set rga PROGRAM_OFFSET
+    add rgc rga
+    mov rfr rgc
+    storer rgb rgc
     jmp loop

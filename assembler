@@ -1,5 +1,49 @@
 #!/usr/bin/env python3
 
+import math
+import random
+
+
+def parseFromHexBinDec(value: str):
+    res = 0
+    if "0x" in value:
+        res = int(value.lower().replace("0x", "").replace("#", ""), 16)
+    elif "0b" in value:
+        res = int(value.lower().replace("0b", ""), 2)
+    else:
+        res = int(value, 10)
+    
+    return res
+
+def parseFromHexBinDecWithArithmetic(i: str):
+    v = 0
+    if "*" in i:
+        value = i.split(" ")
+        value.pop(0)
+        va, vb = " ".join(value).split("*")
+        v = int(abs(parseFromHexBinDec(va) * parseFromHexBinDec(vb)))
+    elif "+" in i:
+        value = i.split(" ")
+        value.pop(0)
+        va, vb = " ".join(value).split("+")
+        v = int(abs(parseFromHexBinDec(va) + parseFromHexBinDec(vb)))
+    elif "-" in i:
+        value = i.split(" ")
+        value.pop(0)
+        va, vb = " ".join(value).split("-")
+        v = int(abs(parseFromHexBinDec(va) - parseFromHexBinDec(vb)))
+    elif "/" in i:
+        value = i.split(" ")
+        value.pop(0)
+        va, vb = " ".join(value).split("/")
+        v = int(abs(parseFromHexBinDec(va) // parseFromHexBinDec(vb)))
+    else:
+        value = i.split(" ")
+        value.pop(0)
+        v = parseFromHexBinDec(value[0])
+
+    return v
+
 def assembly(filename: str):
     OPERATION_VALUES = {
         "NOP"   : 0,
@@ -13,6 +57,7 @@ def assembly(filename: str):
         "RND"   : 8,
         "RNDC"  : 9,
         "RNDS"  : 10,
+        "STORER": 11,
         "JMP"   : 100,
         "JEZ"   : 101,
         "JEQ"   : 105,
@@ -39,13 +84,14 @@ def assembly(filename: str):
         "HALT"  : [],
         "MOV"   : ["REG", "REG"],
         "SET"   : ["REG", "CONST"],
-        "MEMSET": ["RAM" "CONST"],
+        "MEMSET": ["RAM", "CONST"],
         "LOAD"  : ["RAM", "REG"],
         "STORE" : ["REG", "RAM"],
         "LEA"   : ["RAM", "REG"],
         "RND"   : ["REG"],
         "RNDC"  : ["REG", "CONST"],
         "RNDS"  : ["REG"],
+        "STORER": ["REG", "REG"],
         "JMP"   : ["RAM"],
         "JEZ"   : ["RAM"],
         "JGZ"   : ["RAM"],
@@ -100,15 +146,8 @@ def assembly(filename: str):
 
     count = 0
     for i in contents:
-        if i[0] == ".":
-            value = i.split(" ")[1]
-            if "0x" in value:
-                value = int(value.lower().replace("0x", "").replace("#", ""), 16)
-            elif "0b" in value:
-                value = int(value.lower().replace("0b", ""), 2)
-            else:
-                value = int(value, 10)
-            DIRECTIVES[i.split(" ")[0]] = value
+        if i[0] == ".":         # Parse Directives
+            DIRECTIVES[i.split(" ")[0].replace(".", "").upper()] = parseFromHexBinDecWithArithmetic(i)
         elif "=" in i:
             s = [j.replace(" ", "") for j in i.split("=")]
             if len(s) != 2:
@@ -148,13 +187,17 @@ def assembly(filename: str):
         operand = OPERATION_OPERANDS[PROGRAM[i][0]]
         for j in range(len(operand)):
             if operand[j] == "CONST":       # Parse Constant (immediate value) operand
-                value = PROGRAM[i][j+1].lower()
-                if "0x" in value:
-                    PROGRAM[i][j+1] = int(PROGRAM[i][j+1].lower().replace("0x", "").replace("#", ""), 16)
-                elif "0b" in value:
-                    PROGRAM[i][j+1] = int(PROGRAM[i][j+1].lower().replace("0b", ""), 2)
-                else:
-                    PROGRAM[i][j+1] = int(PROGRAM[i][j+1], 10)
+                try:
+                    v = parseFromHexBinDecWithArithmetic(" ".join(["a", PROGRAM[i][j+1].lower()]))
+                    PROGRAM[i][j+1] = v
+                except:
+                    try:
+                        PROGRAM[i][j+1] = VARIABLES[PROGRAM[i][j+1]]
+                        PROGRAM[i][j+1] = parseFromHexBinDecWithArithmetic(" ".join(["a", str(PROGRAM[i][j+1])]))
+                    except:
+                        print("Invalid Operand")
+                        print("at:      " + " ".join([str(g) for g in PROGRAM[i]]))
+                        exit(1)
             if operand[j]  == "REG":
                 value = PROGRAM[i][j+1].upper()
                 try:
@@ -162,24 +205,23 @@ def assembly(filename: str):
                 except:
                     try:
                         PROGRAM[i][j+1] = VARIABLES[PROGRAM[i][j+1]]
-                        if "0x" in value:
-                            PROGRAM[i][j+1] = int(PROGRAM[i][j+1].lower().replace("0x", "").replace("#", ""), 16)
-                        elif "0b" in value:
-                            PROGRAM[i][j+1] = int(PROGRAM[i][j+1].lower().replace("0b", ""), 2)
-                        else:
-                            PROGRAM[i][j+1] = int(PROGRAM[i][j+1], 10)
+                        PROGRAM[i][j+1] = parseFromHexBinDecWithArithmetic(" ".join(["a", str(PROGRAM[i][j+1])]))
                     except:
                         print("Invalid Operand")
-                        print("at:      " + PROGRAM)
+                        print("at:      " + PROGRAM[i])
+                        exit(1)
             if operand[j] == "RAM":
-                value = PROGRAM[i][j+1].lower()
-                if "0x" in value or "#" in value:
-                    PROGRAM[i][j+1] = int(PROGRAM[i][j+1].lower().replace("0x", "").replace("#", ""), 16)
-                elif "0b" in value:
-                    PROGRAM[i][j+1] = int(PROGRAM[i][j+1].lower().replace("0b", ""), 2)
-                else:
-                    PROGRAM[i][j+1] = int(PROGRAM[i][j+1], 10)
-
+                try:
+                    v = parseFromHexBinDecWithArithmetic(" ".join(["a", PROGRAM[i][j+1].lower()]))
+                    PROGRAM[i][j+1] = v
+                except:
+                    try:
+                        PROGRAM[i][j+1] = VARIABLES[PROGRAM[i][j+1]]
+                        PROGRAM[i][j+1] = parseFromHexBinDecWithArithmetic(" ".join(["a", str(PROGRAM[i][j+1])]))
+                    except:
+                        print("Invalid Operand")
+                        print("at:      " + " ".join([str(g) for g in PROGRAM[i]]))
+                        exit(1)
     # Parse Jumps and/or Branches Control
     for i in PROGRAM:
         if PROGRAM[i][0] in ["JMP", "JEZ", "JGZ", "JLZ", "JMN", "JEQ", "JNE", "JMG", "JML"]:
@@ -206,7 +248,12 @@ def assembly(filename: str):
         opn2 = bin(opn2).replace("0b", "").rjust(123, "0")
         
         data.append("".join([op, opn1, opn2]))
-    
+
+    for i in DIRECTIVES:
+        if i == "OVERRUN":
+            value = DIRECTIVES[i]
+            for j in range(value):
+                data.append("0"*256)
     return data
 
 
@@ -236,7 +283,7 @@ if __name__ == "__main__":
         except: 
             print(f"{infile} not found!")
             exit(1)
-
+    
     data = assembly(infile)
     with open(outfile, "w") as f:
         for i in data:
