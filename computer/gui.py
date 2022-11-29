@@ -1,5 +1,5 @@
 import sys, pygame
-import random
+import math
 import utils
 import time
 
@@ -49,9 +49,11 @@ size = width, height = 1600, 900
 canvas_size = cwidth, cheight = 1600 - 515, 899
 vsize = vwidth, vheight = 320, 320
 screen = pygame.display.set_mode(size, vsync=0)
-
+pygame.display.set_caption("wtkCPU Emulator")
 label_font = pygame.font.SysFont("Courier", 15)
 value_font = pygame.font.SysFont("Courier", 12)
+info_font = pygame.font.SysFont("Arial", 14)
+fps_font = pygame.font.SysFont("Courier", 24)
 
 register_names = [cpu.REGISTRY_NAMES[i] for i in cpu.REGISTRY_NAMES]
 register_labels = [ label_font.render(i + ":", False, (200, 200, 200))
@@ -83,11 +85,41 @@ def add_to_text_box(data: str):
     if len(text_box_data) > 48:
         text_box_data.pop(0)
 
+last_tickspeed = 0
+tickspeed = 50
+do_tick = False
 pygame.display.flip()
 lt = time.time()
+
+sec = time.time()
+frames = 0
+fpses = [0 for _ in range(100)]
 while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT: sys.exit()
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_q:
+                tickspeed += 1
+            if event.key == pygame.K_a:
+                tickspeed -= 1
+            if event.key == pygame.K_w:
+                tickspeed += 10
+            if event.key == pygame.K_s:
+                tickspeed -= 10
+            if event.key == pygame.K_SPACE:
+                if tickspeed == 0:
+                    tickspeed = last_tickspeed
+                else:
+                    last_tickspeed = tickspeed
+                    tickspeed = 0
+            if event.key == pygame.K_RETURN:
+                if tickspeed <= 0:
+                    do_tick = True
+    
+    if tickspeed < 0:
+        tickspeed = 0
+    if tickspeed > 200:
+        tickspeed = 200
 
     pygame.draw.rect(screen, (15, 15, 15), (0, 0, 515, height))
     pygame.draw.line(screen, (255, 255, 255), (0, 0), (0, height), 1)
@@ -158,12 +190,25 @@ while True:
             draw_to_screen((r, g, b), (int(i / vheight), int(i % vheight)))
 
 
+    pygame.draw.line(screen, (255, 255, 255), (0, 855), (515, 855), 1)
+    screen.blit(info_font.render("Q/W : Increase Tick Speed", True, (255, 255, 255)), (3, 855))
+    screen.blit(info_font.render("A/S : Decrease Tick Speed", True, (255, 255, 255)), (3, 868))
+    screen.blit(info_font.render("SPACEBAR : Pause Tick", True, (255, 255, 255)), (200, 855))
+    screen.blit(info_font.render("ENTER : Next Tick (works in pause)", True, (255, 255, 255)), (200, 868))
+    screen.blit(info_font.render("Current Tick Speed : " + ("STOPPED" if tickspeed <= 0 else str(tickspeed) if tickspeed < 200 else "MAX") , True, (255, 255, 255)), (3, 882))
+    fps = sum(fpses) /100
+    screen.blit(fps_font.render(str(math.ceil(fps)), True, (255, 255, 255)), (450, 855))
+    screen.blit(info_font.render("writer: wowotek - Property of   The World  \\m/" , True, (155, 155, 155)), (200, 882))
     pygame.display.flip()
-
+    frames += 1
+    fpses.append(frames)
+    if len(fpses) >= 100:
+        fpses.pop(0)
+    
     # add instruction to textbox
     now = time.time()
-    if now - lt > 0:
-        try:
+    if tickspeed > 0:
+        if now - lt > ((1 / tickspeed) if tickspeed < 200 else 0):
             instruction = cpu.OPERATION_NAMES[cpu.__PROC_CURRENT_INSTRUCTION.unsigned_decimal]
             instruction_operand_type = OPERATION_OPERANDS[instruction]
             operand = [cpu.__PROC_CURRENT_VALUE_A.unsigned_decimal, cpu.__PROC_CURRENT_VALUE_B.unsigned_decimal]
@@ -172,6 +217,22 @@ while True:
                     operand[i] = cpu.REGISTRY_NAMES[operand[i]]
                 
             add_to_text_box(" ".join([instruction.ljust(6, " ")] + [str(i).rjust(3, " ").ljust(6, " ") for i in operand]))
-        except: pass
+            cpu.tick()
+            lt = now
+    
+    nowsec = time.time()
+    if nowsec - sec >= 1:
+        frames = 0
+        sec = nowsec
+    
+    if do_tick:
+        do_tick = False
+        instruction = cpu.OPERATION_NAMES[cpu.__PROC_CURRENT_INSTRUCTION.unsigned_decimal]
+        instruction_operand_type = OPERATION_OPERANDS[instruction]
+        operand = [cpu.__PROC_CURRENT_VALUE_A.unsigned_decimal, cpu.__PROC_CURRENT_VALUE_B.unsigned_decimal]
+        for i in range(len(instruction_operand_type)):
+            if instruction_operand_type[i] == "REG":
+                operand[i] = cpu.REGISTRY_NAMES[operand[i]]
+            
+        add_to_text_box(" ".join([instruction.ljust(6, " ")] + [str(i).rjust(3, " ").ljust(6, " ") for i in operand]))
         cpu.tick()
-        lt = now

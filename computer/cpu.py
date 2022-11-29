@@ -2,7 +2,7 @@ from __future__ import annotations
 import utils as UTILS
 import random
 
-DEBUG = True
+DEBUG = False
 def eprint(*args, **kwargs):
     if not DEBUG: return
     print(*args, **kwargs)
@@ -279,7 +279,6 @@ def _OP_LOAD():
 def _OP_STORE():
     eprint("STO", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
     RAM[__PROC_CURRENT_VALUE_B.unsigned_decimal] = REGISTRY[__PROC_CURRENT_VALUE_A.unsigned_decimal].copy
-    print()
 
 def _OP_LEA():
     eprint("LEA", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
@@ -378,7 +377,6 @@ def _OP_ADD():
     eprint("ADD", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal, (REGISTRY[__PROC_CURRENT_VALUE_A.unsigned_decimal].unsigned_decimal, REGISTRY[__PROC_CURRENT_VALUE_B.unsigned_decimal].unsigned_decimal))
     result = REGISTRY[__PROC_CURRENT_VALUE_A.unsigned_decimal].copy.ADD(REGISTRY[__PROC_CURRENT_VALUE_B.unsigned_decimal].copy)
     assign_flag((__PROC_CURRENT_VALUE_A.unsigned_decimal + __PROC_CURRENT_VALUE_B.unsigned_decimal) > BANDWITH_MAX_NUMBER, result[0].unsigned_decimal == 0, result[2], result[1], (__PROC_CURRENT_VALUE_A.unsigned_decimal + __PROC_CURRENT_VALUE_B.unsigned_decimal) < 0)
-    print(result[0].unsigned_decimal)
     REGISTRY[2] = result[0].copy
 
 def _OP_SUB():
