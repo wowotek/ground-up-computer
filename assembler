@@ -10,11 +10,11 @@ def assembly(filename: str):
         "LOAD"  : 5,
         "STORE" : 6,
         "LEA"   : 7,
+        "RND"   : 8,
+        "RNDC"  : 9,
+        "RNDS"  : 10,
         "JMP"   : 100,
         "JEZ"   : 101,
-        "JGZ"   : 102,
-        "JLZ"   : 103,
-        "JMN"   : 104,
         "JEQ"   : 105,
         "JNE"   : 106,
         "JMG"   : 107,
@@ -25,6 +25,8 @@ def assembly(filename: str):
         "NAND"  : 203,
         "XOR"   : 204,
         "XNOR"  : 205,
+        "INC"   : 206,
+        "DEC"   : 207,
         "ADD"   : 301,
         "SUB"   : 302,
         "MUL"   : 303,
@@ -41,10 +43,12 @@ def assembly(filename: str):
         "LOAD"  : ["RAM", "REG"],
         "STORE" : ["REG", "RAM"],
         "LEA"   : ["RAM", "REG"],
+        "RND"   : ["REG"],
+        "RNDC"  : ["REG", "CONST"],
+        "RNDS"  : ["REG"],
         "JMP"   : ["RAM"],
         "JEZ"   : ["RAM"],
         "JGZ"   : ["RAM"],
-        "JLZ"   : ["RAM"],
         "JMN"   : ["RAM"],
         "JEQ"   : ["RAM"],
         "JNE"   : ["RAM"],
@@ -56,6 +60,8 @@ def assembly(filename: str):
         "NAND"  : ["REG", "REG"],
         "XOR"   : ["REG", "REG"],
         "XNOR"  : ["REG", "REG"],
+        "INC"   : ["REG"],
+        "DEC"   : ["REG"],
         "ADD"   : ["REG", "REG"],
         "SUB"   : ["REG", "REG"],
         "MULY"  : ["REG", "REG"],
@@ -78,33 +84,56 @@ def assembly(filename: str):
         "RGF": 9,
         "RGG": 10,
         "RGH": 11,
-
-        "RIA": 12,
-        "RIB": 13,
-        "RIC": 14,
-        "RID": 15,
-
-        "RFA": 16,
-        "RFB": 17,
-        "RFC": 18,
-        "RFD": 19
     }
 
     PROGRAM: dict[int, list[str]] = {}
+    DIRECTIVES: dict[str, int] = {}
+    VARIABLES: dict[str, int] = {}
+
     JMP_ADDRESES = {}
     with open(filename, "r") as f:
         contents = f.readlines()
         contents = [" ".join([k for k in j.split(" ") if k != ""]) for j in [i.replace("\n", "") for i in contents if i[0] != ";"] if j != ""]
         contents = [i.split(";", 1)[0] for i in contents]
         contents = [i.rstrip() for i in contents]
+        contents = [i for i in contents if i != ""]
 
     count = 0
     for i in contents:
-        if i[0] != ":":
+        if i[0] == ".":
+            value = i.split(" ")[1]
+            if "0x" in value:
+                value = int(value.lower().replace("0x", "").replace("#", ""), 16)
+            elif "0b" in value:
+                value = int(value.lower().replace("0b", ""), 2)
+            else:
+                value = int(value, 10)
+            DIRECTIVES[i.split(" ")[0]] = value
+        elif "=" in i:
+            s = [j.replace(" ", "") for j in i.split("=")]
+            if len(s) != 2:
+                print("Variable assignments failed at:")
+                print("at:      " + i)
+                exit(1)
+            if s[1] == "":
+                print("Variable assignments need value")
+                print("at:      " + i + " ????")
+                exit(1)
+            
+            reserved_name = [i.lower() for i in OPERATION_VALUES] + [i.lower() for i in REGISTRY_NAMES]
+            if s[0].lower() in reserved_name:
+                print("Variable names is reserved")
+                print("at:      " + i)
+                exit(1)
+            
+            var, val = (s[0], s[1])
+            VARIABLES[var] = val
+
+        elif i[0] != ":":
             PROGRAM[count] = [i.upper() for i in i.split(" ")]
             count += 1
         else:
-            JMP_ADDRESES[i.replace(":", "")] = count
+            JMP_ADDRESES[i.replace(":", "").upper()] = count
 
     ####################################################################################
     ####################################################################################
@@ -128,7 +157,20 @@ def assembly(filename: str):
                     PROGRAM[i][j+1] = int(PROGRAM[i][j+1], 10)
             if operand[j]  == "REG":
                 value = PROGRAM[i][j+1].upper()
-                PROGRAM[i][j+1] = REGISTRY_NAMES[PROGRAM[i][j+1]]
+                try:
+                    PROGRAM[i][j+1] = REGISTRY_NAMES[PROGRAM[i][j+1]]
+                except:
+                    try:
+                        PROGRAM[i][j+1] = VARIABLES[PROGRAM[i][j+1]]
+                        if "0x" in value:
+                            PROGRAM[i][j+1] = int(PROGRAM[i][j+1].lower().replace("0x", "").replace("#", ""), 16)
+                        elif "0b" in value:
+                            PROGRAM[i][j+1] = int(PROGRAM[i][j+1].lower().replace("0b", ""), 2)
+                        else:
+                            PROGRAM[i][j+1] = int(PROGRAM[i][j+1], 10)
+                    except:
+                        print("Invalid Operand")
+                        print("at:      " + PROGRAM)
             if operand[j] == "RAM":
                 value = PROGRAM[i][j+1].lower()
                 if "0x" in value or "#" in value:
@@ -144,7 +186,7 @@ def assembly(filename: str):
             if PROGRAM[i][1] not in JMP_ADDRESES: raise Exception(f"SUBSECTION {PROGRAM[i][1]} does not exist")
         
             PROGRAM[i][1] = JMP_ADDRESES[PROGRAM[i][1]]
-
+    
     # Parse Operation to Binary Counterparts
     for i in PROGRAM:
         ops = PROGRAM[i][0]
@@ -160,8 +202,8 @@ def assembly(filename: str):
         
         op, opn1, opn2 = op
         op = bin(op).replace("0b", "").rjust(10, "0")
-        opn1 = bin(opn1).replace("0b", "").rjust(128, "0")
-        opn2 = bin(opn2).replace("0b", "").rjust(128, "0")
+        opn1 = bin(opn1).replace("0b", "").rjust(123, "0")
+        opn2 = bin(opn2).replace("0b", "").rjust(123, "0")
         
         data.append("".join([op, opn1, opn2]))
     
@@ -196,7 +238,6 @@ if __name__ == "__main__":
             exit(1)
 
     data = assembly(infile)
-    
     with open(outfile, "w") as f:
         for i in data:
             f.write(i)

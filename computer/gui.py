@@ -1,96 +1,173 @@
-import customtkinter as tk
-import threading
+import sys, pygame
+import random
+import utils
+import time
 
-tk.set_appearance_mode("System")
-tk.set_default_color_theme("blue")
+import cpu
 
-class Application(tk.CTkFrame):
-    def __init__(self, master: tk.CTk):
-        super().__init__(master)
+OPERATION_OPERANDS: dict[str, list[str]] = {
+    "NOP"   : [],
+    "HALT"  : [],
+    "MOV"   : ["REG", "REG"],
+    "SET"   : ["REG", "CONST"],
+    "MEMSET": ["RAM" "CONST"],
+    "LOAD"  : ["RAM", "REG"],
+    "STORE" : ["REG", "RAM"],
+    "LEA"   : ["RAM", "REG"],
+    "RND"   : ["REG"],
+    "RNDC"  : ["REG"],
+    "RNDS"  : ["REG", "CONST"],
+    "JMP"   : ["RAM"],
+    "JEZ"   : ["RAM"],
+    "JGZ"   : ["RAM"],
+    "JMN"   : ["RAM"],
+    "JEQ"   : ["RAM"],
+    "JNE"   : ["RAM"],
+    "JMG"   : ["RAM"],
+    "JML"   : ["RAM"],
+    "OR"    : ["REG", "REG"],
+    "NOR"   : ["REG", "REG"],
+    "AND"   : ["REG", "REG"],
+    "NAND"  : ["REG", "REG"],
+    "XOR"   : ["REG", "REG"],
+    "XNOR"  : ["REG", "REG"],
+    "INC"   : ["REG"],
+    "DEC"   : ["REG"],
+    "ADD"   : ["REG", "REG"],
+    "SUB"   : ["REG", "REG"],
+    "MULY"  : ["REG", "REG"],
+    "DIV"   : ["REG", "REG"],
+    "CMP"   : ["REG", "REG"],
+}
 
-        self.textvar_rfp = tk.StringVar()
-        self.textvar_rfi = tk.StringVar()
-        self.textvar_rfr = tk.StringVar()
-        self.textvar_rff = tk.StringVar()
-        self.textvar_rga = tk.StringVar()
-        self.textvar_rgb = tk.StringVar()
-        self.textvar_rgc = tk.StringVar()
-        self.textvar_rgd = tk.StringVar()
-        self.textvar_rge = tk.StringVar()
-        self.textvar_rgf = tk.StringVar()
-        self.textvar_rgg = tk.StringVar()
-        self.textvar_rgh = tk.StringVar()
+print("\n"*3)
+pygame.init()
+pygame.font.init()
 
-        self.label_register = tk.CTkLabel(self, text="Registers")
-        self.label_screen = tk.CTkLabel(self, text="Screen")
-        self.label_ramcontent = tk.CTkLabel(self, text="RAM Content")
+size = width, height = 1600, 900
+canvas_size = cwidth, cheight = 1600 - 515, 899
+vsize = vwidth, vheight = 320, 320
+screen = pygame.display.set_mode(size, vsync=0)
 
-        self.label_rfp = tk.CTkLabel(self, text="RFP", anchor="e", width=30)
-        self.label_rfi = tk.CTkLabel(self, text="RFI", anchor="e", width=30)
-        self.label_rfr = tk.CTkLabel(self, text="RFR", anchor="e", width=30)
-        self.label_rff = tk.CTkLabel(self, text="RFF", anchor="e", width=30)
-        self.label_rga = tk.CTkLabel(self, text="RGA", anchor="e", width=30)
-        self.label_rgb = tk.CTkLabel(self, text="RGB", anchor="e", width=30)
-        self.label_rgc = tk.CTkLabel(self, text="RGC", anchor="e", width=30)
-        self.label_rgd = tk.CTkLabel(self, text="RGD", anchor="e", width=30)
-        self.label_rge = tk.CTkLabel(self, text="RGE", anchor="e", width=30)
-        self.label_rgf = tk.CTkLabel(self, text="RGF", anchor="e", width=30)
-        self.label_rgg = tk.CTkLabel(self, text="RGG", anchor="e", width=30)
-        self.label_rgh = tk.CTkLabel(self, text="RGH", anchor="e", width=30)
+label_font = pygame.font.SysFont("Courier", 15)
+value_font = pygame.font.SysFont("Courier", 12)
 
-        self.entry_rfp = tk.CTkEntry(self, justify="right", state="disabled", textvariable=self.textvar_rfp)
-        self.entry_rfi = tk.CTkEntry(self, justify="right", state="disabled", textvariable=self.textvar_rfi)
-        self.entry_rfr = tk.CTkEntry(self, justify="right", state="disabled", textvariable=self.textvar_rfr)
-        self.entry_rff = tk.CTkEntry(self, justify="right", state="disabled", textvariable=self.textvar_rff)
-        self.entry_rga = tk.CTkEntry(self, justify="right", state="disabled", textvariable=self.textvar_rga)
-        self.entry_rgb = tk.CTkEntry(self, justify="right", state="disabled", textvariable=self.textvar_rgb)
-        self.entry_rgc = tk.CTkEntry(self, justify="right", state="disabled", textvariable=self.textvar_rgc)
-        self.entry_rgd = tk.CTkEntry(self, justify="right", state="disabled", textvariable=self.textvar_rgd)
-        self.entry_rge = tk.CTkEntry(self, justify="right", state="disabled", textvariable=self.textvar_rge)
-        self.entry_rgf = tk.CTkEntry(self, justify="right", state="disabled", textvariable=self.textvar_rgf)
-        self.entry_rgg = tk.CTkEntry(self, justify="right", state="disabled", textvariable=self.textvar_rgg)
-        self.entry_rgh = tk.CTkEntry(self, justify="right", state="disabled", textvariable=self.textvar_rgh)
+register_names = [cpu.REGISTRY_NAMES[i] for i in cpu.REGISTRY_NAMES]
+register_labels = [ label_font.render(i + ":", False, (200, 200, 200))
+    for i in register_names
+]
+last_added_pixels = []
 
-        self.canvas = tk.CTkCanvas(self, bg="black", bd=5, width=600, height=400)
+def draw_pixel(color: tuple[int, int, int] | tuple[int, int, int, int], coordinate: tuple[float, float]):
+    last_added_pixels.append((color, coordinate))
+
+def draw_to_screen(color: tuple[int, int, int] | tuple[int, int, int, int], coordinate: tuple[float, float]):
+    newx = int(utils.map_value(0, vwidth, 517, cwidth + 514, coordinate[0]))
+    newy = int(utils.map_value(0, vheight, 2, cheight - 1, coordinate[1]))
+    screen.set_at((newx, newy), color)
+    screen.set_at((newx, newy+1), color)
+    screen.set_at((newx+1, newy), color)
+    screen.set_at((newx+1, newy+1), color)
+    screen.set_at((newx, newy+2), color)
+    screen.set_at((newx+2, newy), color)
+    screen.set_at((newx+2, newy+2), color)
+    screen.set_at((newx+1, newy+2), color)
+    screen.set_at((newx+2, newy+1), color)
+    screen.set_at((newx+3, newy), color)
+    screen.set_at((newx+3, newy+1), color)
+    screen.set_at((newx+3, newy+2), color)
+
+text_box_data = [
+    "" for _ in range(48)
+]
+
+def add_to_text_box(data: str):
+    text_box_data.append(data)
+    if len(text_box_data) > 48:
+        text_box_data.pop(0)
+
+pygame.display.flip()
+lt = time.time()
+while True:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT: sys.exit()
+
+    pygame.draw.rect(screen, (15, 15, 15), (0, 0, 515, height))
+    pygame.draw.line(screen, (255, 255, 255), (0, 0), (0, height), 1)
+    pygame.draw.line(screen, (255, 255, 255), (515, 0), (515, height), 1)
+    pygame.draw.line(screen, (255, 255, 255), (width-1, 0), (width-1, height), 1)
+    pygame.draw.line(screen, (255, 255, 255), (0, 0), (width, 0), 1)
+    pygame.draw.line(screen, (255, 255, 255), (0, height-1), (width, height-1), 1)
+
+    # Register Labels
+    [ screen.blit(register_labels[i], (2, (i * 15) - 1))
+        for i in range(len(register_labels))
+    ]
+
+    # Separator Between Register Labels and Value
+    [ pygame.draw.line(screen, (255, 255, 255), (0, (i * 15)), (515, (i * 15)), 1)
+        for i in range(len(register_labels)+1)
+    ]
+
+    # Draw Text Box Data inside textbox
+    for i in range(48):
+        if i < len(text_box_data):
+            d = str(47-i).rjust(2, "0") + " | " + text_box_data[i]
+            if len(d) > 73:
+                d = str(47-i).rjust(2, "0") + " | " + text_box_data[i][0:70]
+            bgcolor = (15, 15, 15)
+            if i == 47:
+                bgcolor = (255, 15, 15)
+            screen.blit(value_font.render(d.ljust(73, " "), False, (255, 255, 255), bgcolor), (3, (i * 14) + 182))
+        else:
+            screen.blit(value_font.render("---", False, (255, 255, 255)), (3, (i * 14) + 182))
     
-        self.pack_all()
-        self.grid()
     
-    def pack_all(self):
-        self.label_register.grid(row=0, column=0, columnspan=2)
-        self.label_screen.grid(row=0, column=2)
-        self.label_ramcontent.grid(row=0, column=3)
+    # Show CPU Register Values
+    for i in cpu.REGISTRY_NAMES:
+        # print(cpu.REGISTRY_NAMES[i], utils.binaryToReadableHex(cpu.REGISTRY[i].binary))
+        if cpu.REGISTRY_NAMES[i] in ["RFP", "RFI", "RFR"]:
+            screen.blit(
+                value_font.render(
+                    utils.binaryToReadableHex(cpu.REGISTRY[i].binary),
+                    False,
+                    (255, 255, 255)
+                ),
+                (42, (i * 15) + 2)
+            )
+        elif cpu.REGISTRY_NAMES[i] in ["RFF"]:
+            pass
+        else:
+            screen.blit(
+                value_font.render(
+                    str(cpu.REGISTRY[i].unsigned_decimal),
+                    False,
+                    (255, 255, 255)
+                ),
+                (42, (i * 15) + 2)
+            )
 
-        self.label_rfp.grid(row=1 , column=0, padx=0)
-        self.label_rfi.grid(row=2 , column=0, padx=0)
-        self.label_rfr.grid(row=3 , column=0, padx=0)
-        self.label_rff.grid(row=4 , column=0, padx=0)
-        self.label_rga.grid(row=5 , column=0, padx=0)
-        self.label_rgb.grid(row=6 , column=0, padx=0)
-        self.label_rgc.grid(row=7 , column=0, padx=0)
-        self.label_rgd.grid(row=8 , column=0, padx=0)
-        self.label_rge.grid(row=9 , column=0, padx=0)
-        self.label_rgf.grid(row=10, column=0, padx=0)
-        self.label_rgg.grid(row=11, column=0, padx=0)
-        self.label_rgh.grid(row=12, column=0, padx=0)
+    for i in range(vwidth * vheight):
+        decimal = cpu.RAM[cpu.PROGRAM_LENGTH + i].unsigned_decimal
+        if decimal == 0: continue
 
-        self.entry_rfp.grid(row=1 , column=1)
-        self.entry_rfi.grid(row=2 , column=1)
-        self.entry_rfr.grid(row=3 , column=1)
-        self.entry_rff.grid(row=4 , column=1)
-        self.entry_rga.grid(row=5 , column=1)
-        self.entry_rgb.grid(row=6 , column=1)
-        self.entry_rgc.grid(row=7 , column=1)
-        self.entry_rgd.grid(row=8 , column=1)
-        self.entry_rge.grid(row=9 , column=1)
-        self.entry_rgf.grid(row=10, column=1)
-        self.entry_rgg.grid(row=11, column=1)
-        self.entry_rgh.grid(row=12, column=1)
+        binary = cpu.RAM[cpu.PROGRAM_LENGTH + i].binary
+        r = utils.map_value(0, (2 ** 64)-1, 0, 255, int(binary[0:64], 2)) 
+        g = utils.map_value(0, (2 ** 64)-1, 0, 255, int(binary[64:128], 2))
+        b = utils.map_value(0, (2 ** 64)-1, 0, 255, int(binary[128:192], 2))
+        a = utils.map_value(0, (2 ** 64)-1, 0, 255, int(binary[192:256], 2))
 
-        self.canvas.grid(row=1, column=2, rowspan=12, padx=5)
+        draw_to_screen((r, g, b), (int(i / vheight), int(i % vheight)))
 
 
-app = tk.CTk()
-Application(app)
-
-app.mainloop()
+    pygame.display.flip()
+    # add instruction to textbox
+    instruction = cpu.OPERATION_NAMES[cpu.__PROC_CURRENT_INSTRUCTION.unsigned_decimal]
+    instruction_operand_type = OPERATION_OPERANDS[instruction]
+    operand = [cpu.__PROC_CURRENT_VALUE_A.unsigned_decimal, cpu.__PROC_CURRENT_VALUE_B.unsigned_decimal]
+    for i in range(len(instruction_operand_type)):
+        if instruction_operand_type[i] == "REG":
+            operand[i] = cpu.REGISTRY_NAMES[operand[i]]
+        
+    add_to_text_box("   ".join([instruction] + [str(i).rjust(3, " ") for i in operand]))
+    cpu.tick()      

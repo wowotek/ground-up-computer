@@ -1,6 +1,5 @@
 import sys
 import cpu
-import gui
 
 args = sys.argv
 if len(args) <= 1:
@@ -10,6 +9,11 @@ if len(args) <= 1:
 with open(args[1], "r") as f:
     content = [i.replace("\n", "") for i in f.readlines()]
 
-cpu.initialize_ram([cpu.Binary.from_binary(i) for i in content])
+for i in content:
+    print(i)
+content = [cpu.Binary.from_binary(i) for i in content]
+print("Loading Program To RAM with content of :")
+[print("    ", i) for i in content]
 
-gui.start()
+cpu.initialize_ram(content)
+import gui

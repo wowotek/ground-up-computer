@@ -1,8 +1,13 @@
 from __future__ import annotations
 import utils as UTILS
+import random
 
+DEBUG = True
+def eprint(*args, **kwargs):
+    if not DEBUG: return
+    print(*args, **kwargs)
 
-ARCH_BIT_BANDWITH = 266
+ARCH_BIT_BANDWITH = 256
 BANDWITH_MAX_NUMBER = int("".join(["1" for _ in range(ARCH_BIT_BANDWITH)]), 2)
 
 class Binary:
@@ -98,7 +103,7 @@ class Binary:
     @staticmethod
     def adder_subtractor(value_a: Binary, value_b: Binary, carry: bool = False, subtract: bool = False):
         t_binary = [True if i == "1" else False for i in value_a.binary][::-1]
-        o_binary = [True if i == "1" else False for i in (value_b.binary if not subtract else value_b.XOR(Binary.maximum())).binary][::-1]
+        o_binary = [True if i == "1" else False for i in (value_b.binary if not subtract else value_b.XOR(Binary.maximum()).binary)][::-1]
 
         results: list[bool] = []
         last_carry = carry or subtract
@@ -184,23 +189,31 @@ __PROC_CURRENT_VALUE_A = Binary(0)
 __PROC_CURRENT_VALUE_B = Binary(0)
 __IS_HALTING = False
 
-
+PROGRAM_LENGTH = 0
 RAM: dict[int, Binary] = {}
 def initialize_ram(data: list[Binary]):
+    global PROGRAM_LENGTH
     for i in range(len(data)):
         RAM[i] = data[i]
+        PROGRAM_LENGTH += 1
+
+    for i in range(320 * 320):
+        if random.randint(0, 100) > 99:
+            RAM[PROGRAM_LENGTH + i] = Binary.from_decimal(random.randint(0, 2**256))
+        else:
+            RAM[PROGRAM_LENGTH + i] = Binary.from_decimal(0)
 
 REGISTRY = {
     0   : Binary(),   # Instruction Pointer - Program Counter
     1   : Binary(),   # Instruction
     2   : Binary(),   # ALU Return
-    # ALUs
-    # 0 Overflow
-    # 1 Zero
-    # 2 Negative
-    # 3 Carry
 
     3   : Binary(),   # Flags Register
+    # 0 -1 Overflow
+    # 1 -2 Zero
+    # 2 -3 Negative
+    # 3 -4 Carry
+    # 4 -5 Underflow
 
     4   : Binary(),   # General Purpose Register A
     5   : Binary(),   # General Purpose Register B
@@ -213,21 +226,32 @@ REGISTRY = {
 }
 
 REGISTRY_NAMES = {
-    "RFP": 0,
-    "RFI": 1,
-    "RFR": 2,
-
-    "RFF": 3,
-
-    "RGA": 4,
-    "RGB": 5,
-    "RGC": 6,
-    "RGD": 7,
-    "RGE": 8,
-    "RGF": 9,
-    "RGG": 10,
-    "RGH": 11,
+    0   : "RFP",
+    1   : "RFI",
+    2   : "RFR",
+    3   : "RFF",
+    4   : "RGA",
+    5   : "RGB",
+    6   : "RGC",
+    7   : "RGD",
+    8   : "RGE",
+    9   : "RGF",
+    10  : "RGG",
+    11  : "RGH",
 }
+
+def assign_flag(overflow: bool = False, zero: bool = False, negative: bool = False, carry: bool = False, underflow: bool = False):
+    current = [i for i in Binary.from_decimal(0).binary]
+    if overflow:
+        current[-1] = "1"
+    if zero:
+        current[-2] = "1"
+    if negative:
+        current[-3] = "1"
+    if carry:
+        current[-4] = "1"
+    if underflow:
+        current[-5] = "1"
 
 def _OP_NOP():
     for i in range(100000000):
@@ -239,92 +263,146 @@ def _OP_HALT():
     __IS_HALTING = True
 
 def _OP_MOV():
-    pass
+    eprint("MOV", REGISTRY_NAMES[__PROC_CURRENT_VALUE_A.unsigned_decimal], REGISTRY_NAMES[__PROC_CURRENT_VALUE_B.unsigned_decimal])
+    REGISTRY[__PROC_CURRENT_VALUE_B.unsigned_decimal] = REGISTRY[__PROC_CURRENT_VALUE_A.unsigned_decimal]
 
 def _OP_MEMSET():
-    pass
+    eprint("MEM", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
+    RAM[__PROC_CURRENT_VALUE_A.unsigned_decimal] = REGISTRY[__PROC_CURRENT_VALUE_B.unsigned_decimal].copy
 
 def _OP_SET():
-    pass
+    eprint("SET", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
+    REGISTRY[__PROC_CURRENT_VALUE_A.unsigned_decimal] = __PROC_CURRENT_VALUE_B.copy
 
 def _OP_LOAD():
-    pass
+    eprint("LOA", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
+    REGISTRY[__PROC_CURRENT_VALUE_A.unsigned_decimal] = RAM[__PROC_CURRENT_VALUE_B.unsigned_decimal].copy
 
 def _OP_STORE():
-    pass
+    eprint("STO", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
+    RAM[__PROC_CURRENT_VALUE_A.unsigned_decimal] = REGISTRY[__PROC_CURRENT_VALUE_A.unsigned_decimal]
 
 def _OP_LEA():
-    pass
+    eprint("LEA", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
+
+def _OP_RND(): # Randomize until maximum
+    global RAM
+    eprint("RND", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
+    REGISTRY[__PROC_CURRENT_VALUE_A.unsigned_decimal] = Binary.from_decimal(random.randint(0, BANDWITH_MAX_NUMBER))
+
+def _OP_RNDC(): # Randomize with Ceiling
+    eprint("RNDC", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
+    REGISTRY[__PROC_CURRENT_VALUE_A.unsigned_decimal] = Binary.from_decimal(random.randint(0, __PROC_CURRENT_VALUE_B.unsigned_decimal))
+
+def _OP_RNDS(): # Randomize Signed
+    eprint("RNDS", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
+    REGISTRY[__PROC_CURRENT_VALUE_A.unsigned_decimal] = Binary.from_decimal(random.randint(-(BANDWITH_MAX_NUMBER/2), BANDWITH_MAX_NUMBER/2))
 
 def _OP_JMP():
-    pass
+    eprint("JMP", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
+    REGISTRY[0] = Binary.from_decimal(__PROC_CURRENT_VALUE_A.unsigned_decimal)
 
 def _OP_JEZ():
-    pass
-
-def _OP_JGZ():
-    pass
-
-def _OP_JLZ():
-    pass
-
-def _OP_JMN():
-    pass
+    eprint("JEZ", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
+    if REGISTRY[3].binary[-2] == "1" and REGISTRY[3].binary[-3] == "0":
+        REGISTRY[0] = Binary.from_decimal(__PROC_CURRENT_VALUE_A.unsigned_decimal)
 
 def _OP_JEQ():
-    pass
+    eprint("JEQ", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
+    if REGISTRY[3].binary[-2] == "1" and REGISTRY[3].binary[-3] == "0":
+        REGISTRY[0] = Binary.from_decimal(__PROC_CURRENT_VALUE_A.unsigned_decimal)
 
 def _OP_JNE():
-    pass
+    eprint("JNE", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
+    if REGISTRY[3].binary[-2] == "0" or REGISTRY[3].binary[-3] == "1":
+        REGISTRY[0] = Binary.from_decimal(__PROC_CURRENT_VALUE_A.unsigned_decimal)
 
 def _OP_JMG():
-    pass
+    eprint("JMG", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
+    if REGISTRY[3].binary[-2] == "0" and REGISTRY[3].binary[-3] == "0":
+        REGISTRY[0] = Binary.from_decimal(__PROC_CURRENT_VALUE_A.unsigned_decimal)
 
 def _OP_JML():
-    pass
+    eprint("JML", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
+    if REGISTRY[3].binary[-2] == "0" and REGISTRY[3].binary[-3] == "1":
+        REGISTRY[0] = Binary.from_decimal(__PROC_CURRENT_VALUE_A.unsigned_decimal)
 
 def _OP_OR():
+    ("(", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
     result = __PROC_CURRENT_VALUE_A.OR(__PROC_CURRENT_VALUE_B)
+    assign_flag(False, result.unsigned_decimal == 0, False, False)
     REGISTRY[2] = result
 
 def _OP_NOR():
+    eprint("NOR", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
     result = __PROC_CURRENT_VALUE_A.NOR(__PROC_CURRENT_VALUE_B)
+    assign_flag(False, result.unsigned_decimal == 0, False, False)
     REGISTRY[2] = result
 
 def _OP_AND():
+    eprint("AND", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
     result = __PROC_CURRENT_VALUE_A.AND(__PROC_CURRENT_VALUE_B)
+    assign_flag(False, result.unsigned_decimal == 0, False, False)
     REGISTRY[2] = result
 
 def _OP_NAND():
+    eprint("NAN", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
     result = __PROC_CURRENT_VALUE_A.NAND(__PROC_CURRENT_VALUE_B)
+    assign_flag(False, result.unsigned_decimal == 0, False, False)
     REGISTRY[2] = result
 
 def _OP_XOR():
+    eprint("XOR", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
     result = __PROC_CURRENT_VALUE_A.XOR(__PROC_CURRENT_VALUE_B)
+    assign_flag(False, result.unsigned_decimal == 0, False, False)
     REGISTRY[2] = result
 
 def _OP_XNOR():
+    eprint("XNO", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
     result = __PROC_CURRENT_VALUE_A.XNOR(__PROC_CURRENT_VALUE_B)
+    assign_flag(False, result.unsigned_decimal == 0, False, False)
     REGISTRY[2] = result
 
+def _OP_INC():
+    eprint("INC", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
+    REGISTRY[__PROC_CURRENT_VALUE_A.unsigned_decimal] = Binary.from_decimal(REGISTRY[__PROC_CURRENT_VALUE_A.unsigned_decimal].unsigned_decimal + 1)
+
+def _OP_DEC():
+    eprint("DEC", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
+    REGISTRY[__PROC_CURRENT_VALUE_A.unsigned_decimal] = Binary.from_decimal(REGISTRY[__PROC_CURRENT_VALUE_A.unsigned_decimal].unsigned_decimal - 1)
+
 def _OP_ADD():
+    eprint("ADD", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
     result = __PROC_CURRENT_VALUE_A.ADD(__PROC_CURRENT_VALUE_B)
+    assign_flag((__PROC_CURRENT_VALUE_A.unsigned_decimal + __PROC_CURRENT_VALUE_B.unsigned_decimal) > BANDWITH_MAX_NUMBER, result[0].unsigned_decimal == 0, result[2], result[1], (__PROC_CURRENT_VALUE_A.unsigned_decimal + __PROC_CURRENT_VALUE_B.unsigned_decimal) < 0)
     REGISTRY[2] = result[0]
 
 def _OP_SUB():
+    eprint("SUB", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
     result = __PROC_CURRENT_VALUE_A.SUBTRACT(__PROC_CURRENT_VALUE_B)
+    assign_flag((__PROC_CURRENT_VALUE_A.unsigned_decimal - __PROC_CURRENT_VALUE_B.unsigned_decimal) > BANDWITH_MAX_NUMBER, result[0].unsigned_decimal == 0, result[2], result[1], (__PROC_CURRENT_VALUE_A.unsigned_decimal - __PROC_CURRENT_VALUE_B.unsigned_decimal) < 0)
     REGISTRY[2] = result[0]
 
 def _OP_MUL():
+    eprint("MUL", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
     result = __PROC_CURRENT_VALUE_A.MULTIPLY(__PROC_CURRENT_VALUE_B)
+    assign_flag((__PROC_CURRENT_VALUE_A.unsigned_decimal * __PROC_CURRENT_VALUE_B.unsigned_decimal) > BANDWITH_MAX_NUMBER, result[0].unsigned_decimal == 0, result[2], result[1], (__PROC_CURRENT_VALUE_A.unsigned_decimal * __PROC_CURRENT_VALUE_B.unsigned_decimal) < 0)
     REGISTRY[2] = result[0]
 
 def _OP_DIV():
+    eprint("DIV", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
     result = __PROC_CURRENT_VALUE_A.DIVIDE(__PROC_CURRENT_VALUE_B)
+    assign_flag((__PROC_CURRENT_VALUE_A.unsigned_decimal / __PROC_CURRENT_VALUE_B.unsigned_decimal) > BANDWITH_MAX_NUMBER, result.unsigned_decimal == 0, (__PROC_CURRENT_VALUE_A.unsigned_decimal / __PROC_CURRENT_VALUE_B.unsigned_decimal) < 0, False)
     REGISTRY[2] = result[0]
 
 def _OP_CMP():
-    pass
+    assign_flag(
+        (__PROC_CURRENT_VALUE_A.unsigned_decimal - __PROC_CURRENT_VALUE_B.unsigned_decimal) > BANDWITH_MAX_NUMBER,
+        (__PROC_CURRENT_VALUE_A.unsigned_decimal - __PROC_CURRENT_VALUE_B.unsigned_decimal) == 0,
+        (__PROC_CURRENT_VALUE_A.unsigned_decimal - __PROC_CURRENT_VALUE_B.unsigned_decimal) < 0,
+        False,
+        (__PROC_CURRENT_VALUE_A.unsigned_decimal - __PROC_CURRENT_VALUE_B.unsigned_decimal) < 0
+    )
 
 OPERATIONS = {
     0: _OP_NOP,
@@ -336,13 +414,13 @@ OPERATIONS = {
     5: _OP_LOAD,     # Load from ram address of src to reg of dest
     6: _OP_STORE,    # Store from reg of src to ram at dest
     7: _OP_LEA,      # Load Effective Address (load the address instead of value)
+    8: _OP_RND,      # Randomize without ceiling
+    9: _OP_RNDC,     # Randomize with maximum
+    10: _OP_RNDS,    # Randomize signed from minimum to maximum
 
     # Conditional Jumps
-    100: _OP_JMP,     # do Unconditional Jump
+    100: _OP_JMP,      # do Unconditional Jump
     101: _OP_JEZ,      # Read From Flags and do Jump if flag is Zero
-    102: _OP_JGZ,      # Read From Flags and do Jump if flag is Greater tHan Zero
-    103: _OP_JLZ,      # Read From Flags and do Jump if flag is Less Than Zero
-    104: _OP_JMN,      # Read From Flags and do Jump if flag is Negative
     105: _OP_JEQ,      # Read From Flags and do Jump if flag is Equal
     106: _OP_JNE,      # Read From Flags and do Jump if flag is Not Equal
     107: _OP_JMG,      # Read From Flags and do Jump if flag is Greater Than
@@ -354,6 +432,8 @@ OPERATIONS = {
     203: _OP_NAND,
     204: _OP_XOR,
     205: _OP_XNOR,
+    206: _OP_INC,
+    207: _OP_DEC,
 
     301: _OP_ADD,
     302: _OP_SUB,
@@ -362,17 +442,43 @@ OPERATIONS = {
     305: _OP_CMP,
 }
 
-
-###### FLAGS
-# 0 = Carry
-# 1 = Zero
-# 2 = Negative
-# 3 = Overflow
+OPERATION_NAMES = {
+    0: "NOP",
+    1: "HALT",
+    2: "MOV",
+    3: "SET",
+    4: "MEMSET",
+    5: "LOAD",
+    6: "STORE",
+    7: "LEA",
+    8:  "RND",
+    9:  "RNDC",
+    10: "RNDS",
+    100: "JMP",
+    101: "JEZ",
+    105: "JEQ",
+    106: "JNE",
+    107: "JMG",
+    108: "JML",
+    200: "OR",
+    201: "NOR",
+    202: "AND",
+    203: "NAND",
+    204: "XOR",
+    205: "XNOR",
+    206: "INC",
+    207: "DEC",
+    301: "ADD",
+    302: "SUB",
+    303: "MUL",
+    304: "DIV",
+    305: "CMP",
+}
 
 def tick():
     global __IS_HALTING
-
     if __IS_HALTING: return
+
     global __PROC_CURRENT_INSTRUCTION
     global __PROC_CURRENT_VALUE_A
     global __PROC_CURRENT_VALUE_B
@@ -389,14 +495,22 @@ def tick():
     __PROC_CURRENT_VALUE_A = Binary.from_binary(__value_a)
     __PROC_CURRENT_VALUE_B = Binary.from_binary(__value_b)
 
-    print(__instruction, __value_a, __value_b)
-    print(len(__instruction), len(__value_a), len(__value_b))
+    # eprint(__instruction, __value_a, __value_b)
+    # eprint(len(__instruction), len(__value_a), len(__value_b))
     
     try:
-        operation = OPERATIONS[__PROC_CURRENT_INSTRUCTION]
+        
+        operation = OPERATIONS[__PROC_CURRENT_INSTRUCTION.unsigned_decimal]
+        operation_name = OPERATION_NAMES[__PROC_CURRENT_INSTRUCTION.unsigned_decimal]
     except:
-        print("Operation Not Found!")
+        eprint("Operation Not Found!")
         __IS_HALTING = True
+        return
     
-    # operation()
-    REGISTRY[0] = REGISTRY[0].set_unsigned_decimal(REGISTRY[0].unsigned_decimal + 1)
+    operation()
+    if operation_name not in ["JMP", "JEZ", "JEQ", "JNE", "JMG", "JML"]:
+        REGISTRY[0].set_unsigned_decimal(REGISTRY[0].unsigned_decimal + 1)
+    
+    # for i in REGISTRY_NAMES:
+    #     eprint(REGISTRY_NAMES[i], ":", REGISTRY[i].unsigned_decimal, end=" | ")
+    # eprint()
