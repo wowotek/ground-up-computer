@@ -253,7 +253,8 @@ def assembly(filename: str):
         if i == "OVERRUN":
             value = DIRECTIVES[i]
             for j in range(value):
-                data.append("0"*256)
+                # data.append(bin(random.randint(0, 2**256)).replace("0b", "").rjust(256, "0"))
+                data.append("0" * 256)
     return data
 
 

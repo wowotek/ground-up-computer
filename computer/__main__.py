@@ -12,5 +12,5 @@ with open(args[1], "r") as f:
 content = [cpu.Binary.from_binary(i) for i in content]
 print("Loading Program To RAM")
 
-cpu.initialize_ram(content)
+cpu.initialize_ram(content, 240, 240)
 import gui

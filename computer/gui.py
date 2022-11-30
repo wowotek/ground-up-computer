@@ -44,9 +44,9 @@ print("\n"*3)
 pygame.init()
 pygame.font.init()
 
-size = width, height = 1600, 900
-canvas_size = cwidth, cheight = 1600 - 515, 899
-vsize = vwidth, vheight = 320, 320
+size = width, height = 1400, 900
+canvas_size = cwidth, cheight = 1400 - 515, 899
+vsize = vwidth, vheight = 240, 240
 screen = pygame.display.set_mode(size, vsync=0)
 pygame.display.set_caption("wtkCPU Emulator")
 label_font = pygame.font.SysFont("Courier", 15)
@@ -66,14 +66,22 @@ def draw_to_screen(color: tuple[int, int, int] | tuple[int, int, int, int], coor
     screen.set_at((newx, newy+1), color)
     screen.set_at((newx+1, newy), color)
     screen.set_at((newx+1, newy+1), color)
+
     screen.set_at((newx, newy+2), color)
     screen.set_at((newx+2, newy), color)
-    screen.set_at((newx+2, newy+2), color)
+    
     screen.set_at((newx+1, newy+2), color)
     screen.set_at((newx+2, newy+1), color)
+    screen.set_at((newx+2, newy+2), color)
+
     screen.set_at((newx+3, newy), color)
     screen.set_at((newx+3, newy+1), color)
     screen.set_at((newx+3, newy+2), color)
+
+    screen.set_at((newx+3, newy+3), color)
+    screen.set_at((newx+2, newy+3), color)
+    screen.set_at((newx+1, newy+3), color)
+    screen.set_at((newx  , newy+3), color)
 
 text_box_data = [
     "" for _ in range(48)
@@ -175,18 +183,18 @@ while True:
                 (42, (i * 15) + 2)
             )
 
-    if len(cpu.RAM) - cpu.PROGRAM_LENGTH >= (vwidth * vheight):
-        for i in range(vwidth * vheight):
-            decimal = cpu.RAM[cpu.PROGRAM_LENGTH + i].unsigned_decimal
-            if decimal == 0: continue
+    for i in range(vwidth * vheight):
+        if i >= (len(cpu.RAM) - cpu.PROGRAM_LENGTH): continue
+        decimal = cpu.RAM[cpu.PROGRAM_LENGTH + i].unsigned_decimal
+        if decimal == 0: continue
 
-            binary = cpu.RAM[cpu.PROGRAM_LENGTH + i].binary
-            r = utils.map_value(0, (2 ** 10)-1, 0, 255, int(binary[0:10], 2)) 
-            g = utils.map_value(0, (2 ** 10)-1, 0, 255, int(binary[10:20], 2))
-            b = utils.map_value(0, (2 ** 10)-1, 0, 255, int(binary[20:30], 2))
-            a = utils.map_value(0, (2 ** 10)-1, 0, 255, int(binary[30:40], 2))
+        binary = cpu.RAM[cpu.PROGRAM_LENGTH + i].binary
+        r = utils.map_value(0, (2 ** 10)-1, 0, 255, int(binary[0:10], 2)) 
+        g = utils.map_value(0, (2 ** 10)-1, 0, 255, int(binary[10:20], 2))
+        b = utils.map_value(0, (2 ** 10)-1, 0, 255, int(binary[20:30], 2))
+        a = utils.map_value(0, (2 ** 10)-1, 0, 255, int(binary[30:40], 2))
 
-            draw_to_screen((r, g, b), (int(i / vheight), int(i % vheight)))
+        draw_to_screen((r, g, b), (int(i / vheight), int(i % vheight)))
 
 
     pygame.draw.line(screen, (255, 255, 255), (0, 855), (515, 855), 1)

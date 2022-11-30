@@ -191,12 +191,12 @@ __IS_HALTING = False
 
 PROGRAM_LENGTH = 0
 RAM: dict[int, Binary] = {}
-def initialize_ram(data: list[Binary]):
+def initialize_ram(data: list[Binary], screen_width: int = 240, screen_height: int = 240):
     global PROGRAM_LENGTH
     for i in range(len(data)):
         RAM[i] = data[i]
     
-    PROGRAM_LENGTH = len(data) - (320 * 320)
+    PROGRAM_LENGTH = len(data) - (screen_width * screen_height)
     if PROGRAM_LENGTH < 0:
         PROGRAM_LENGTH = len(data)
 
