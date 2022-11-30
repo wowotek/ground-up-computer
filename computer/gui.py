@@ -22,7 +22,6 @@ OPERATION_OPERANDS: dict[str, list[str]] = {
     "JEZ"   : ["RAM"],
     "JGZ"   : ["RAM"],
     "JMN"   : ["RAM"],
-    "JEQ"   : ["RAM"],
     "JNE"   : ["RAM"],
     "JMG"   : ["RAM"],
     "JML"   : ["RAM"],

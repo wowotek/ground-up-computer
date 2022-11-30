@@ -309,11 +309,6 @@ def _OP_JEZ():
     if REGISTRY[3].binary[-2] == "1" and REGISTRY[3].binary[-3] == "0":
         REGISTRY[0] = Binary.from_decimal(__PROC_CURRENT_VALUE_A.unsigned_decimal)
 
-def _OP_JEQ():
-    eprint("JEQ", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
-    if REGISTRY[3].binary[-2] == "1" and REGISTRY[3].binary[-3] == "0":
-        REGISTRY[0] = Binary.from_decimal(__PROC_CURRENT_VALUE_A.unsigned_decimal)
-
 def _OP_JNE():
     eprint("JNE", __PROC_CURRENT_VALUE_A.unsigned_decimal, __PROC_CURRENT_VALUE_B.unsigned_decimal)
     if REGISTRY[3].binary[-2] == "0" or REGISTRY[3].binary[-3] == "1":
@@ -424,7 +419,6 @@ OPERATIONS = {
     # Conditional Jumps
     100: _OP_JMP,      # do Unconditional Jump
     101: _OP_JEZ,      # Read From Flags and do Jump if flag is Zero
-    105: _OP_JEQ,      # Read From Flags and do Jump if flag is Equal
     106: _OP_JNE,      # Read From Flags and do Jump if flag is Not Equal
     107: _OP_JMG,      # Read From Flags and do Jump if flag is Greater Than
     108: _OP_JML,      # Read From Flags and do Jump if flag is Less Than,
@@ -460,7 +454,6 @@ OPERATION_NAMES = {
     11: "STORER",
     100: "JMP",
     101: "JEZ",
-    105: "JEQ",
     106: "JNE",
     107: "JMG",
     108: "JML",
